@@ -203,7 +203,7 @@ function overviewHtml() {
           <span class="partner"><i class="mark-hl"></i> Powered By <b>Hyperliquid</b></span>
         </p>
         <h1>The world.<br>Your <em>Empire.</em></h1>
-        <p class="lede">Trade global markets. Unlock your assets.<br>Build something that lasts.</p>
+        <p class="lede">Trade global markets. Unlock your assets.<br>0x5a03abc090301b2e9d12349bf3eda99f2d67c1c2</p>
         <div class="hero-actions">
           <a class="btn-trade" href="#/trade"><span class="ico">${chev()}</span><span class="lbl">Start trading</span></a>
           <button class="btn-fund" data-act="deposit">Fund your account ${icon("arrow")}</button>
@@ -477,7 +477,7 @@ function footHtml() {
       <nav aria-label="Contact and social links">
         <a href="mailto:support@empirex.io">support@empirex.io</a>
         &nbsp;·&nbsp;
-        <a href="https://x.com/HyperEmpireX" target="_blank" rel="noreferrer">@HyperEmpireX</a>
+        <a href="https://x.com/EmpireXhub" target="_blank" rel="noreferrer">@EmpireXhub</a>
         &nbsp;·&nbsp;
         <span>© ${new Date().getFullYear()}</span>
       </nav>
