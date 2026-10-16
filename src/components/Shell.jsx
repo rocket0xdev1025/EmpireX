@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { ArrowIcon, DotsIcon, EmpireMark, HyperliquidMark, RobinhoodMark } from "./Icons.jsx";
+import { ArrowIcon, EmpireMark, HyperliquidMark, RobinhoodMark } from "./Icons.jsx";
 import DepositDialog from "./DepositDialog.jsx";
+import WalletModal from "./WalletModal.jsx";
 
 const NAV = [
   { to: "/", label: "Overview", end: true },
@@ -15,11 +16,34 @@ function shortAddress(address) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-export default function Shell({ account, depositOpen, setDepositOpen, notice, clearNotice, children }) {
+function WalletButton({ account, onConnect }) {
+  return (
+    <button className="wallet-btn" type="button" aria-label={account.wallet ? shortAddress(account.wallet) : "Connect wallet"} onClick={() => (account.wallet ? account.disconnect() : onConnect())}>
+      <span className="am-accent" aria-hidden="true">
+        <svg width="14" height="16" viewBox="0 0 14 16">
+          <g fill="#03211c">
+            <circle cx="2" cy="2" r="1" />
+            <circle cx="5" cy="5" r="1" />
+            <circle cx="8" cy="8" r="1" />
+            <circle cx="5" cy="11" r="1" />
+            <circle cx="2" cy="14" r="1" />
+            <circle cx="6" cy="2" r="1" />
+            <circle cx="9" cy="5" r="1" />
+            <circle cx="12" cy="8" r="1" />
+            <circle cx="9" cy="11" r="1" />
+            <circle cx="6" cy="14" r="1" />
+          </g>
+        </svg>
+      </span>
+      <span className="am-label">{account.wallet ? shortAddress(account.wallet) : "Connect wallet"}</span>
+    </button>
+  );
+}
+
+export default function Shell({ account, walletOpen, setWalletOpen, depositOpen, setDepositOpen, notice, clearNotice, children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [walletOpen, setWalletOpen] = useState(false);
   const current = NAV.find((item) => (item.end ? location.pathname === "/" : location.pathname.startsWith(item.to)));
 
   useEffect(() => {
@@ -65,17 +89,14 @@ export default function Shell({ account, depositOpen, setDepositOpen, notice, cl
             <button className="balance-chip" onClick={() => setDepositOpen(true)}>
               <img src="/assets/tokens/HOOD.png" alt="" />
               <span>USDG</span>
-              <strong>{account.wallet ? account.balances.usdg.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}</strong>
+              <strong>{account.wallet && account.balances.usdg != null ? account.balances.usdg.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}</strong>
             </button>
             <button className="balance-chip" onClick={() => setDepositOpen(true)}>
               <img src="/assets/tokens/HYPE.svg" alt="" />
               <span>USDC</span>
-              <strong>{account.wallet ? account.balances.usdc.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}</strong>
+              <strong>{account.wallet && account.balances.usdc != null ? account.balances.usdc.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}</strong>
             </button>
-            <button className="wallet-btn" onClick={() => (account.wallet ? account.disconnect() : setWalletOpen(true))}>
-              <span>{account.wallet ? shortAddress(account.wallet) : "Connect wallet"}</span>
-              <i />
-            </button>
+            <WalletButton account={account} onConnect={() => setWalletOpen(true)} />
           </div>
 
           <div className="mobile-bar">
@@ -88,10 +109,7 @@ export default function Shell({ account, depositOpen, setDepositOpen, notice, cl
                 <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </button>
-            <button className="wallet-btn" onClick={() => (account.wallet ? account.disconnect() : setWalletOpen(true))}>
-              <DotsIcon />
-              <span>{account.wallet ? shortAddress(account.wallet) : "Connect wallet"}</span>
-            </button>
+            <WalletButton account={account} onConnect={() => setWalletOpen(true)} />
           </div>
         </div>
         {menuOpen && (
@@ -129,26 +147,7 @@ export default function Shell({ account, depositOpen, setDepositOpen, notice, cl
         </button>
       )}
 
-      {walletOpen && (
-        <div className="modal-backdrop" onClick={() => setWalletOpen(false)}>
-          <div className="modal" role="dialog" aria-labelledby="wallet-title" onClick={(event) => event.stopPropagation()}>
-            <p className="eyebrow">Preview</p>
-            <h2 id="wallet-title">Connect wallet</h2>
-            <p className="muted">This local clone uses a preview wallet. Nothing is signed and no funds move.</p>
-            <button
-              className="mint-btn wide"
-              onClick={() => {
-                account.connect();
-                setWalletOpen(false);
-              }}
-            >
-              <span className="mint-icon"><DotsIcon /></span>
-              Continue with preview wallet
-            </button>
-            <button className="text-btn" onClick={() => setWalletOpen(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
+      {walletOpen && <WalletModal account={account} onClose={() => setWalletOpen(false)} />}
 
       {depositOpen && <DepositDialog account={account} onClose={() => setDepositOpen(false)} />}
       <span className="sr-only"><ArrowIcon /></span>

@@ -15,7 +15,7 @@ export default function Borrow({ account }) {
     setNote(
       account.wallet
         ? `Preview only. Lending is not yet live. ${asset.symbol} would borrow about $${borrowable.toLocaleString("en-US", { maximumFractionDigits: 0 })} USDG.`
-        : "Connect a preview wallet to explore the borrow flow.",
+        : "Connect a wallet to explore the borrow flow.",
     );
   }
 

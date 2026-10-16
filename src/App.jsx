@@ -12,6 +12,7 @@ const DEMO_ADDRESS = "0x4cD00e387622C35bDDb9b4c962c136462338bC31";
 
 export default function App() {
   const [wallet, setWallet] = useState(null);
+  const [walletOpen, setWalletOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [balances, setBalances] = useState({ usdg: 12500, usdc: 8420.55 });
   const [notice, setNotice] = useState("");
@@ -20,9 +21,13 @@ export default function App() {
     () => ({
       wallet,
       balances,
-      connect() {
-        setWallet(DEMO_ADDRESS);
-        setNotice("Preview wallet connected. Balances and orders stay on this device.");
+      connect(address = DEMO_ADDRESS) {
+        setWallet(address);
+        setBalances({ usdg: null, usdc: null });
+        setNotice("");
+      },
+      openConnect() {
+        setWalletOpen(true);
       },
       disconnect() {
         setWallet(null);
@@ -45,6 +50,8 @@ export default function App() {
   return (
     <Shell
       account={account}
+      walletOpen={walletOpen}
+      setWalletOpen={setWalletOpen}
       depositOpen={depositOpen}
       setDepositOpen={setDepositOpen}
       notice={notice}

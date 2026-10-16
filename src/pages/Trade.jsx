@@ -51,7 +51,7 @@ export default function Trade({ account, onFund }) {
   function placeOrder(event) {
     event.preventDefault();
     if (!account.wallet) {
-      setMessage("Connect a preview wallet before placing an order.");
+      setMessage("Connect a wallet before placing an order.");
       return;
     }
     if (!Number(size) || Number(size) <= 0) {
@@ -186,7 +186,7 @@ export default function Trade({ account, onFund }) {
           {account.wallet ? (
             <button className={`mint-btn wide ${side}`} type="submit">Submit order</button>
           ) : (
-            <button className="mint-btn wide" type="button" onClick={account.connect}>Connect wallet</button>
+            <button className="mint-btn wide" type="button" onClick={account.openConnect}>Connect wallet</button>
           )}
           <button className="text-btn" type="button" onClick={onFund}>Deposit USDC to trade</button>
           {message && <p className="form-note">{message}</p>}

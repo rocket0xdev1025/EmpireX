@@ -5,7 +5,7 @@ export default function Portfolio({ account, onFund }) {
         <p className="eyebrow">Portfolio</p>
         <h1>Your positions live here.</h1>
         <p className="lede">Connect your wallet to see your Hyperliquid and trade.xyz accounts, wallet balances on Robinhood Chain and HyperEVM, your loan and your Tribute rewards.</p>
-        <button className="mint-btn" onClick={account.connect}>Connect wallet</button>
+        <button className="mint-btn" onClick={account.openConnect}>Connect wallet</button>
         <div className="info-grid">
           <article><h2>Trading accounts</h2><p>Equity, open PnL and positions on Hyperliquid and trade.xyz.</p></article>
           <article><h2>Wallet balances</h2><p>USDG on Robinhood Chain and USDC on HyperEVM, ready to deposit.</p></article>

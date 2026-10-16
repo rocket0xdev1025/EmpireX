@@ -13,7 +13,8 @@ export default function DepositDialog({ account, onClose }) {
   function submit(event) {
     event.preventDefault();
     if (!account.wallet) {
-      account.connect();
+      account.openConnect();
+      return;
     }
     account.fund(amount);
     setDone(true);
