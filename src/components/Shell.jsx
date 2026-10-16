@@ -61,6 +61,7 @@ export default function Shell({ account, walletOpen, setWalletOpen, depositOpen,
 
   return (
     <div className="app-shell">
+      {location.pathname.startsWith("/trade") && <div className="trade-backdrop" aria-hidden="true" />}
       <header className="notch-nav">
         <div className="notch-row">
           <div className="notch notch-logo">
@@ -132,11 +133,16 @@ export default function Shell({ account, walletOpen, setWalletOpen, depositOpen,
         </div>
         <p className="footer-credits">
           <span>Execution by <HyperliquidMark /> Hyperliquid</span>
+          <i aria-hidden="true">·</i>
           <span>Assets on <RobinhoodMark /> Robinhood Chain</span>
         </p>
         <nav className="footer-links" aria-label="Contact and social links">
-          <a href="mailto:support@empirex.io">support@empirex.io</a>
-          <a href="https://x.com/EmpireXhub" target="_blank" rel="noreferrer">@EmpireXhub</a>
+          <a href="https://x.com/EmpireXhub" target="_blank" rel="noreferrer" aria-label="EmpireX on X: @EmpireXhub">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            @EmpireXhub
+          </a>
         </nav>
         <span className="footer-copy">© 2026</span>
       </footer>

@@ -1,161 +1,224 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TokenIcon from "../components/TokenIcon.jsx";
+import { DotsIcon, HyperliquidMark } from "../components/Icons.jsx";
 import { findMarket, formatCompact, formatPrice, markets } from "../data.js";
 
-function candles(seed) {
+const FRAMES = ["1m", "5m", "15m", "1h", "4h", "1d"];
+const SLIPPAGES = ["0.10%", "0.25%", "0.50%", "1.00%"];
+
+function makeBars(seed, frame, price) {
+  const count = frame === "1m" ? 90 : frame === "1d" ? 48 : 72;
   const bars = [];
-  let price = 100;
-  for (let i = 0; i < 48; i += 1) {
-    const drift = Math.sin(i / 4 + seed) * 2.2 + ((i * 17 + seed) % 7) - 3;
-    const open = price;
-    const close = Math.max(20, price + drift);
-    const high = Math.max(open, close) + 1.4;
-    const low = Math.min(open, close) - 1.2;
-    bars.push({ open, close, high, low });
-    price = close;
+  let cursor = price * 0.985;
+  const step = price * 0.0014;
+  for (let i = 0; i < count; i += 1) {
+    const drift = (Math.sin(i / 6 + seed) * 1.6 + Math.cos(i / 2.2) * 0.7) * step;
+    const open = cursor;
+    const close = Math.max(price * 0.5, cursor + drift);
+    bars.push({
+      open,
+      close,
+      high: Math.max(open, close) + step * 0.35,
+      low: Math.min(open, close) - step * 0.28,
+      volume: 8 + ((i * 13 + seed) % 28),
+    });
+    cursor = close;
   }
+  bars[bars.length - 1].close = price;
   return bars;
 }
 
-function book(price) {
+function makeBook(price) {
   const asks = [];
   const bids = [];
-  for (let i = 1; i <= 8; i += 1) {
-    asks.push({ price: price * (1 + i * 0.0004), size: (0.4 + i * 0.17).toFixed(3) });
-    bids.push({ price: price * (1 - i * 0.0004), size: (0.55 + i * 0.13).toFixed(3) });
+  let askTotal = 0;
+  let bidTotal = 0;
+  for (let i = 12; i >= 1; i -= 1) {
+    const size = Number((0.2 + ((i * 17) % 9) * 0.35).toFixed(3));
+    askTotal += size;
+    asks.push({ price: price + i, size, total: askTotal });
   }
-  return { asks: asks.reverse(), bids };
+  asks.reverse();
+  for (let i = 1; i <= 12; i += 1) {
+    const size = Number((0.15 + ((i * 11) % 8) * 0.42).toFixed(3));
+    bidTotal += size;
+    bids.push({ price: price - i, size, total: bidTotal });
+  }
+  const max = Math.max(...asks.map((row) => row.total), ...bids.map((row) => row.total));
+  return { asks, bids, max };
+}
+
+function leverageStops(max) {
+  const stops = [1, Math.round(max / 4), Math.round(max / 2), max].filter((value, index, list) => value > 0 && list.indexOf(value) === index);
+  return stops;
 }
 
 export default function Trade({ account, onFund }) {
   const { symbol } = useParams();
   const navigate = useNavigate();
-  const market = findMarket((symbol || "BTC").toUpperCase());
+  const [frame, setFrame] = useState("5m");
+  const [bookTab, setBookTab] = useState("book");
+  const [activity, setActivity] = useState("Positions");
   const [side, setSide] = useState("long");
   const [orderType, setOrderType] = useState("market");
-  const [size, setSize] = useState("0.10");
-  const [leverage, setLeverage] = useState(5);
-  const [query, setQuery] = useState("");
+  const [unit, setUnit] = useState("USD");
+  const [size, setSize] = useState("");
+  const [marginMode, setMarginMode] = useState("Cross");
+  const [slippage, setSlippage] = useState("0.50%");
+  const [reduceOnly, setReduceOnly] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
 
-  const bars = useMemo(() => candles(market.symbol.length * 3), [market.symbol]);
-  const levels = useMemo(() => book(market.price), [market.price]);
-  const max = Math.max(...bars.map((bar) => bar.high));
-  const min = Math.min(...bars.map((bar) => bar.low));
-  const notional = Number(size || 0) * market.price;
-  const margin = leverage ? notional / leverage : 0;
-  const filtered = markets.filter((item) => `${item.symbol} ${item.name}`.toLowerCase().includes(query.toLowerCase()));
+  const requested = findMarket((symbol || "BTC").toUpperCase());
+  const venue = requested.category === "crypto" ? "crypto" : "xyz";
+  const universe = markets.filter((item) => (venue === "crypto" ? item.category === "crypto" : item.category !== "crypto"));
+  const market = requested;
+  const [leverage, setLeverage] = useState(Math.min(5, market.leverage));
+  const bars = useMemo(() => makeBars(market.symbol.length * 5, frame, market.price), [market.symbol, frame, market.price]);
+  const book = useMemo(() => makeBook(market.price), [market.price]);
+  const last = bars[bars.length - 1];
+  const stops = leverageStops(market.leverage);
+  const coinSize = unit === "USD" ? (Number(size) || 0) / market.price : Number(size) || 0;
+  const notional = coinSize * market.price;
+  const initialMargin = leverage ? notional / leverage : 0;
+  const available = account.wallet && account.balances.usdc != null ? account.balances.usdc : null;
+  const filtered = universe.filter((item) => `${item.symbol} ${item.name}`.toLowerCase().includes(query.toLowerCase()));
+
+  function applyPercent(percent) {
+    if (!available) return;
+    const budget = available * percent;
+    setUnit("USD");
+    setSize(budget.toFixed(2));
+  }
 
   function placeOrder(event) {
     event.preventDefault();
     if (!account.wallet) {
-      setMessage("Connect a wallet before placing an order.");
+      account.openConnect();
       return;
     }
-    if (!Number(size) || Number(size) <= 0) {
+    if (!coinSize) {
       setMessage("Enter an order size.");
       return;
     }
-    setMessage(`${side === "long" ? "Long" : "Short"} ${size} ${market.symbol} recorded locally. Nothing was sent to Hyperliquid.`);
+    setMessage(`${side === "long" ? "Long" : "Short"} ${coinSize.toFixed(4)} ${market.symbol} recorded locally. Nothing was sent to Hyperliquid.`);
   }
 
   return (
-    <div className="trade-page">
-      <div className="trade-top">
-        <button className="market-select" onClick={() => setPicker((open) => !open)}>
-          <TokenIcon symbol={market.symbol} size={32} />
-          <span>
-            <strong>{market.symbol}-USD</strong>
-            <small>{market.category === "crypto" ? "Crypto perpetuals" : "Stocks, indices & commodities"}</small>
-          </span>
-        </button>
-        <div className="stat">
-          <small>Mark</small>
-          <strong>{formatPrice(market.price)}</strong>
+    <main className="trade-desk">
+      <h1 className="td-sr">Trade {market.name} perpetuals</h1>
+      <header className="td-header">
+        <div className="td-identity">
+          <div className="market-picker">
+            <button className="market-picker-trigger" onClick={() => setPicker((open) => !open)}>
+              <TokenIcon symbol={market.symbol} size={34} />
+              <span>
+                <strong>{market.symbol}-USD</strong>
+                <small>{market.name} PERP</small>
+              </span>
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+            </button>
+            {picker && (
+              <div className="picker-pop">
+                <input autoFocus placeholder="Search markets" value={query} onChange={(event) => setQuery(event.target.value)} />
+                <div className="picker-list">
+                  {filtered.map((item) => (
+                    <button key={item.symbol} onClick={() => { navigate(`/trade/${item.symbol}`); setPicker(false); setQuery(""); }}>
+                      <TokenIcon symbol={item.symbol} size={24} />
+                      <span><strong>{item.symbol}</strong><small>{item.name}</small></span>
+                      <em className={item.change < 0 ? "down" : "up"}>{item.change.toFixed(2)}%</em>
+                    </button>
+                  ))}
+                  {filtered.length === 0 && <p className="muted">No markets found.</p>}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="td-quote">
+            <strong className="td-price">{formatPrice(market.price)}</strong>
+            <span className={market.change < 0 ? "down" : "up"}>{market.change.toFixed(2)}%</span>
+          </div>
         </div>
-        <div className={`stat ${market.change < 0 ? "down" : "up"}`}>
-          <small>24h</small>
-          <strong>{market.change.toFixed(2)}%</strong>
+        <dl className="td-stats">
+          <div><dt>Mark</dt><dd>{formatPrice(market.price)}</dd></div>
+          <div><dt>Oracle</dt><dd>{formatPrice(market.price * 1.0004)}</dd></div>
+          <div><dt>24h volume</dt><dd>{formatCompact(market.volume)}</dd></div>
+          <div><dt>Open interest</dt><dd>{formatCompact(market.volume * 1.16)}</dd></div>
+          <div><dt>Funding · 1h</dt><dd>0.0013% <small>10.95% APR</small></dd></div>
+          <div><dt>Next funding</dt><dd>36:13</dd></div>
+        </dl>
+      </header>
+
+      <div className="td-subbar">
+        <div className="market-tabs td-venues" role="tablist">
+          <button className={venue === "crypto" ? "is-active" : ""} onClick={() => navigate("/trade/BTC")}>Crypto <span>{markets.filter((item) => item.category === "crypto").length}</span></button>
+          <button className={venue === "xyz" ? "is-active" : ""} onClick={() => navigate("/trade/NVDA")}>trade.xyz <span>{markets.filter((item) => item.category !== "crypto").length}</span></button>
         </div>
-        <div className="stat">
-          <small>Open interest</small>
-          <strong>{formatCompact(market.volume * 0.42)}</strong>
-        </div>
-        <div className="stat">
-          <small>Funding · 1h</small>
-          <strong>0.0012%</strong>
-        </div>
-        <div className="stat">
-          <small>Volume</small>
-          <strong>{formatCompact(market.volume)}</strong>
-        </div>
-        <span className="live-pill">Live preview</span>
+        <span className="td-venue-note">
+          {venue === "crypto" ? <>Crypto perpetuals powered by <HyperliquidMark /> Hyperliquid</> : "Stocks, indices & commodities · separate USDC collateral"}
+        </span>
+        <span className="td-live">Live on Hyperliquid</span>
       </div>
 
-      {picker && (
-        <div className="picker">
-          <input autoFocus placeholder="Search markets" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <div className="picker-list">
-            {filtered.map((item) => (
-              <button
-                key={item.symbol}
-                onClick={() => {
-                  navigate(`/trade/${item.symbol}`);
-                  setPicker(false);
-                  setQuery("");
-                }}
-              >
-                <TokenIcon symbol={item.symbol} size={28} />
-                <span>
-                  <strong>{item.symbol}</strong>
-                  <small>{item.name}</small>
-                </span>
-                <em className={item.change < 0 ? "down" : "up"}>{item.change.toFixed(2)}%</em>
-              </button>
+      <div className="td-grid">
+        <section className="td-card td-chart">
+          <div className="chart-tools">
+            {FRAMES.map((item) => (
+              <button key={item} className={frame === item ? "is-active" : ""} onClick={() => setFrame(item)}>{item}</button>
             ))}
-            {filtered.length === 0 && <p className="muted">No markets found.</p>}
+            <span>MA 20</span>
           </div>
-        </div>
-      )}
-
-      <div className="trade-grid">
-        <section className="chart-card">
-          <div className="chart">
-            {bars.map((bar, index) => {
-              const top = ((max - Math.max(bar.open, bar.close)) / (max - min)) * 100;
-              const height = (Math.abs(bar.close - bar.open) / (max - min)) * 100;
-              const up = bar.close >= bar.open;
-              return (
-                <span key={index} className={up ? "candle up" : "candle down"} style={{ left: `${(index / bars.length) * 100}%`, top: `${top}%`, height: `${Math.max(height, 1.5)}%` }} />
-              );
-            })}
+          <div className="chart-meta">
+            <strong>{market.symbol} / USD</strong>
+            <span>{frame} · Hyperliquid</span>
+            <span>O {formatPrice(last.open)} H {formatPrice(last.high)} L {formatPrice(last.low)} C {formatPrice(last.close)}</span>
           </div>
-          <div className="book">
-            <header>
-              <span>Live order book</span>
-              <span>Size</span>
-            </header>
-            {levels.asks.map((level) => (
-              <div key={`a-${level.price}`} className="book-row ask">
-                <span>{formatPrice(level.price)}</span>
-                <span>{level.size}</span>
-              </div>
-            ))}
-            <div className="book-mid">{formatPrice(market.price)}</div>
-            {levels.bids.map((level) => (
-              <div key={`b-${level.price}`} className="book-row bid">
-                <span>{formatPrice(level.price)}</span>
-                <span>{level.size}</span>
-              </div>
-            ))}
-          </div>
+          <PriceChart bars={bars} />
+          <p className="chart-foot">Hyperliquid · Live · {bars.length} bars · UTC</p>
         </section>
 
-        <form className="ticket" onSubmit={placeOrder}>
-          <p className="eyebrow">Place an order</p>
-          <h1>{market.name}</h1>
+        <section className="td-card td-book">
+          <div className="book-tabs">
+            <button className={bookTab === "book" ? "is-active" : ""} onClick={() => setBookTab("book")}>Order book</button>
+            <button className={bookTab === "trades" ? "is-active" : ""} onClick={() => setBookTab("trades")}>Trades</button>
+          </div>
+          {bookTab === "book" ? (
+            <div className="order-book">
+              <div className="book-columns"><span>Price (USD)</span><span>Size ({market.symbol})</span><span>Total</span></div>
+              <div className="book-asks">
+                {book.asks.map((row) => (
+                  <div key={row.price} className="book-line ask" style={{ "--depth": `${(row.total / book.max) * 100}%` }}>
+                    <span>{formatPrice(row.price)}</span><span>{row.size.toFixed(3)}</span><span>{row.total.toFixed(3)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="book-spread"><span>Spread</span><strong>1.0</strong><span>0.001%</span></div>
+              <div className="book-bids">
+                {book.bids.map((row) => (
+                  <div key={row.price} className="book-line bid" style={{ "--depth": `${(row.total / book.max) * 100}%` }}>
+                    <span>{formatPrice(row.price)}</span><span>{row.size.toFixed(3)}</span><span>{row.total.toFixed(3)}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="book-foot">Hyperliquid · top price levels</p>
+            </div>
+          ) : (
+            <div className="order-book">
+              <div className="book-columns"><span>Price</span><span>Size</span><span>Time</span></div>
+              {book.bids.slice(0, 10).map((row, index) => (
+                <div key={row.price} className={`book-line ${index % 2 ? "ask" : "bid"}`}>
+                  <span>{formatPrice(row.price)}</span><span>{row.size.toFixed(3)}</span><span>21:{String(10 + index).padStart(2, "0")}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <form className="td-card td-ticket" onSubmit={placeOrder}>
+          <div className="ticket-kicker"><span>HYPERLIQUID</span><span>CRYPTO PERPS</span></div>
+          <h2>Place an order</h2>
           <div className="side-toggle">
             <button type="button" className={side === "long" ? "is-long" : ""} onClick={() => setSide("long")}>Long / Buy</button>
             <button type="button" className={side === "short" ? "is-short" : ""} onClick={() => setSide("short")}>Short / Sell</button>
@@ -164,40 +227,100 @@ export default function Trade({ account, onFund }) {
             <button type="button" className={orderType === "market" ? "is-active" : ""} onClick={() => setOrderType("market")}>Market</button>
             <button type="button" className={orderType === "limit" ? "is-active" : ""} onClick={() => setOrderType("limit")}>Limit</button>
           </div>
-          <label>
-            Size · {market.symbol}
-            <input value={size} onChange={(event) => setSize(event.target.value)} />
+          <label className="size-box">
+            Order size
+            <span className="unit-toggle">
+              <button type="button" className={unit === "USD" ? "is-active" : ""} onClick={() => setUnit("USD")}>USD</button>
+              <button type="button" className={unit === "BTC" ? "is-active" : ""} onClick={() => setUnit("BTC")}>{market.symbol}</button>
+            </span>
+            <input value={size} placeholder="0.00" onChange={(event) => setSize(event.target.value)} />
+            <small>{coinSize.toFixed(4)} {market.symbol}</small>
           </label>
           {orderType === "limit" && (
-            <label>
-              Limit price · USD
-              <input defaultValue={formatPrice(market.price)} />
-            </label>
+            <label className="size-box">Limit price · USD<input defaultValue={formatPrice(market.price)} /></label>
           )}
-          <div className="lev-row">
-            <span>Leverage {leverage}x</span>
-            <input type="range" min="1" max={market.leverage} value={leverage} onChange={(event) => setLeverage(Number(event.target.value))} />
+          <div className="quick-sizes">
+            {[0.25, 0.5, 0.75, 1].map((percent) => (
+              <button key={percent} type="button" onClick={() => applyPercent(percent)}>{percent === 1 ? "Max" : `${percent * 100}%`}</button>
+            ))}
+          </div>
+          <div className="margin-row">
+            <label>Margin
+              <select value={marginMode} onChange={(event) => setMarginMode(event.target.value)}>
+                <option>Cross</option>
+                <option>Isolated</option>
+              </select>
+            </label>
+            <label>Leverage
+              <input value={`${leverage}x`} onChange={(event) => setLeverage(Math.max(1, Math.min(market.leverage, Number(event.target.value) || 1)))} />
+            </label>
+          </div>
+          <div className="lev-stops">
+            {stops.map((stop) => (
+              <button key={stop} type="button" className={leverage === stop ? "is-active" : ""} onClick={() => setLeverage(stop)}>{stop}x</button>
+            ))}
           </div>
           <dl className="ticket-stats">
             <div><dt>Position value</dt><dd>${notional.toLocaleString("en-US", { maximumFractionDigits: 2 })}</dd></div>
-            <div><dt>Est. initial margin</dt><dd>${margin.toLocaleString("en-US", { maximumFractionDigits: 2 })}</dd></div>
-            <div><dt>Available to trade</dt><dd>{account.wallet ? `$${account.balances.usdc.toLocaleString("en-US")}` : "Connect wallet"}</dd></div>
+            <div><dt>Est. initial margin</dt><dd>${initialMargin.toLocaleString("en-US", { maximumFractionDigits: 2 })}</dd></div>
+            <div><dt>Available to trade</dt><dd>{available == null ? "--" : `$${available.toLocaleString("en-US")}`}</dd></div>
           </dl>
+          <label className="check"><input type="checkbox" checked={reduceOnly} onChange={(event) => setReduceOnly(event.target.checked)} /> Reduce only</label>
+          <label className="slip-row">Slippage limit
+            <select value={slippage} onChange={(event) => setSlippage(event.target.value)}>
+              {SLIPPAGES.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </label>
           {account.wallet ? (
-            <button className={`mint-btn wide ${side}`} type="submit">Submit order</button>
+            <button className="mint-btn wide" type="submit"><span className="mint-icon"><DotsIcon /></span>Submit order</button>
           ) : (
-            <button className="mint-btn wide" type="button" onClick={account.openConnect}>Connect wallet</button>
+            <button className="mint-btn wide" type="button" onClick={account.openConnect}><span className="mint-icon"><DotsIcon /></span>Connect wallet</button>
           )}
-          <button className="text-btn" type="button" onClick={onFund}>Deposit USDC to trade</button>
+          <button className="text-btn" type="button" onClick={onFund}>Deposit funds</button>
+          <p className="ticket-note">Hyperliquid perps / USDC collateral</p>
           {message && <p className="form-note">{message}</p>}
         </form>
-      </div>
 
-      <section className="positions">
-        <h2>Your positions</h2>
-        <p>No open positions on the supported Hyperliquid markets.</p>
-        <p className="muted">No open orders.</p>
-      </section>
-    </div>
+        <section className="td-card td-activity">
+          <div className="activity-tabs">
+            {["Positions", "Open orders", "Trade history", "Funding"].map((tab) => (
+              <button key={tab} className={activity === tab ? "is-active" : ""} onClick={() => setActivity(tab)}>{tab}</button>
+            ))}
+          </div>
+          <div className="activity-empty">
+            <strong>{activity === "Positions" ? "Your positions live here." : `No ${activity.toLowerCase()}.`}</strong>
+            <p>{account.wallet ? "No open positions on the supported Hyperliquid markets." : "Connect your wallet to view your Hyperliquid account."}</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function PriceChart({ bars }) {
+  const width = 800;
+  const height = 280;
+  const highs = bars.map((bar) => bar.high);
+  const lows = bars.map((bar) => bar.low);
+  const max = Math.max(...highs);
+  const min = Math.min(...lows);
+  const span = max - min || 1;
+  const slot = width / bars.length;
+  const y = (value) => ((max - value) / span) * (height - 70) + 16;
+  return (
+    <svg className="price-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Price chart">
+      {[0, 1, 2, 3, 4].map((line) => <line key={line} x1="0" x2={width} y1={20 + line * 48} y2={20 + line * 48} className="grid-line" />)}
+      {bars.map((bar, index) => {
+        const up = bar.close >= bar.open;
+        const x = index * slot + slot / 2;
+        return (
+          <g key={index} className={up ? "up" : "down"}>
+            <line x1={x} x2={x} y1={y(bar.high)} y2={y(bar.low)} />
+            <rect x={x - Math.max(slot * 0.28, 1.5)} y={y(Math.max(bar.open, bar.close))} width={Math.max(slot * 0.56, 2)} height={Math.max(Math.abs(y(bar.open) - y(bar.close)), 1)} />
+            <rect x={x - 1} y={height - 8 - bar.volume} width="2" height={bar.volume} className="volume" />
+          </g>
+        );
+      })}
+    </svg>
   );
 }
