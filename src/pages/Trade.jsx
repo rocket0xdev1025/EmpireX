@@ -1,33 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TokenIcon from "../components/TokenIcon.jsx";
+import TradingChart from "../components/TradingChart.jsx";
 import { DotsIcon, HyperliquidMark } from "../components/Icons.jsx";
 import { findMarket, formatCompact, formatPrice, markets } from "../data.js";
 
-const FRAMES = ["1m", "5m", "15m", "1h", "4h", "1d"];
 const SLIPPAGES = ["0.10%", "0.25%", "0.50%", "1.00%"];
-
-function makeBars(seed, frame, price) {
-  const count = frame === "1m" ? 90 : frame === "1d" ? 48 : 72;
-  const bars = [];
-  let cursor = price * 0.985;
-  const step = price * 0.0014;
-  for (let i = 0; i < count; i += 1) {
-    const drift = (Math.sin(i / 6 + seed) * 1.6 + Math.cos(i / 2.2) * 0.7) * step;
-    const open = cursor;
-    const close = Math.max(price * 0.5, cursor + drift);
-    bars.push({
-      open,
-      close,
-      high: Math.max(open, close) + step * 0.35,
-      low: Math.min(open, close) - step * 0.28,
-      volume: 8 + ((i * 13 + seed) % 28),
-    });
-    cursor = close;
-  }
-  bars[bars.length - 1].close = price;
-  return bars;
-}
 
 function makeBook(price) {
   const asks = [];
@@ -57,7 +35,6 @@ function leverageStops(max) {
 export default function Trade({ account, onFund }) {
   const { symbol } = useParams();
   const navigate = useNavigate();
-  const [frame, setFrame] = useState("5m");
   const [bookTab, setBookTab] = useState("book");
   const [activity, setActivity] = useState("Positions");
   const [side, setSide] = useState("long");
@@ -76,9 +53,7 @@ export default function Trade({ account, onFund }) {
   const universe = markets.filter((item) => (venue === "crypto" ? item.category === "crypto" : item.category !== "crypto"));
   const market = requested;
   const [leverage, setLeverage] = useState(Math.min(5, market.leverage));
-  const bars = useMemo(() => makeBars(market.symbol.length * 5, frame, market.price), [market.symbol, frame, market.price]);
   const book = useMemo(() => makeBook(market.price), [market.price]);
-  const last = bars[bars.length - 1];
   const stops = leverageStops(market.leverage);
   const coinSize = unit === "USD" ? (Number(size) || 0) / market.price : Number(size) || 0;
   const notional = coinSize * market.price;
@@ -163,21 +138,7 @@ export default function Trade({ account, onFund }) {
       </div>
 
       <div className="td-grid">
-        <section className="td-card td-chart">
-          <div className="chart-tools">
-            {FRAMES.map((item) => (
-              <button key={item} className={frame === item ? "is-active" : ""} onClick={() => setFrame(item)}>{item}</button>
-            ))}
-            <span>MA 20</span>
-          </div>
-          <div className="chart-meta">
-            <strong>{market.symbol} / USD</strong>
-            <span>{frame} · Hyperliquid</span>
-            <span>O {formatPrice(last.open)} H {formatPrice(last.high)} L {formatPrice(last.low)} C {formatPrice(last.close)}</span>
-          </div>
-          <PriceChart bars={bars} />
-          <p className="chart-foot">Hyperliquid · Live · {bars.length} bars · UTC</p>
-        </section>
+        <TradingChart symbol={market.symbol} category={market.category} price={market.price} />
 
         <section className="td-card td-book">
           <div className="book-tabs">
@@ -294,33 +255,5 @@ export default function Trade({ account, onFund }) {
         </section>
       </div>
     </main>
-  );
-}
-
-function PriceChart({ bars }) {
-  const width = 800;
-  const height = 280;
-  const highs = bars.map((bar) => bar.high);
-  const lows = bars.map((bar) => bar.low);
-  const max = Math.max(...highs);
-  const min = Math.min(...lows);
-  const span = max - min || 1;
-  const slot = width / bars.length;
-  const y = (value) => ((max - value) / span) * (height - 70) + 16;
-  return (
-    <svg className="price-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Price chart">
-      {[0, 1, 2, 3, 4].map((line) => <line key={line} x1="0" x2={width} y1={20 + line * 48} y2={20 + line * 48} className="grid-line" />)}
-      {bars.map((bar, index) => {
-        const up = bar.close >= bar.open;
-        const x = index * slot + slot / 2;
-        return (
-          <g key={index} className={up ? "up" : "down"}>
-            <line x1={x} x2={x} y1={y(bar.high)} y2={y(bar.low)} />
-            <rect x={x - Math.max(slot * 0.28, 1.5)} y={y(Math.max(bar.open, bar.close))} width={Math.max(slot * 0.56, 2)} height={Math.max(Math.abs(y(bar.open) - y(bar.close)), 1)} />
-            <rect x={x - 1} y={height - 8 - bar.volume} width="2" height={bar.volume} className="volume" />
-          </g>
-        );
-      })}
-    </svg>
   );
 }

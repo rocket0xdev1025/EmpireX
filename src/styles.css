@@ -455,7 +455,46 @@ input[type="text"], input[type="number"], input:not([type]) {
 .td-live::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--mint); }
 .td-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px 332px; grid-template-rows: minmax(460px, 1fr) auto; gap: 14px; }
 .td-card { background: rgba(10, 22, 36, .9); border: 1px solid rgba(171, 199, 229, .12); border-radius: 16px; min-width: 0; }
-.td-chart { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; overflow: hidden; }
+.td-chart { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.chart-screen { display: flex; flex-direction: column; height: 100%; min-height: 520px; }
+.chart-screen:fullscreen { background: #07111f; padding: 12px; }
+.chart-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.chart-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 42px; padding: 8px 10px 0; }
+.chart-controls, .chart-control-group { display: flex; align-items: center; gap: 4px; }
+.chart-controls button {
+  border: 0; background: transparent; color: #9eb4cc; border-radius: 8px; padding: 4px 8px; font-size: 13px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.chart-controls button.active { color: var(--mint); background: rgba(151, 252, 228, .1); }
+.chart-instrument { display: flex; gap: 12px; align-items: baseline; padding: 6px 14px 0; color: #9eb4cc; font-size: 13px; }
+.chart-instrument strong { color: #edf3fc; font-size: 14px; }
+.chart-instrument strong span { color: #9eb4cc; font-weight: 500; }
+.ohlc { display: flex; flex-wrap: wrap; gap: 10px; min-height: 22px; padding: 2px 14px 6px; color: #9eb4cc; font-size: 12px; }
+.ohlc b { font-weight: 600; }
+.ohlc b.up { color: #7dffa8; }
+.ohlc b.down { color: #ff6b7a; }
+.chart-hover-time { color: #c5d5e6; }
+.chart-stage { position: relative; flex: 1; min-height: 360px; }
+.chart-canvas { position: absolute; inset: 0; }
+.chart-canvas:focus { outline: none; }
+.chart-drawing-tools {
+  position: absolute; z-index: 3; left: 8px; top: 8px; display: flex; flex-direction: column; gap: 2px;
+}
+.chart-drawing-tools button {
+  width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 6px;
+  background: transparent; color: #9eb4cc; padding: 0;
+}
+.chart-drawing-tools button.active { color: var(--mint); background: rgba(151, 252, 228, .12); }
+.chart-drawing-tools button:disabled { opacity: .35; }
+.drawing-divider { height: 1px; margin: 4px 4px; background: rgba(171, 199, 229, .16); }
+.drawing-color span { display: block; width: 12px; height: 12px; border-radius: 50%; }
+.chart-navigation {
+  position: absolute; z-index: 3; right: 78px; bottom: 28px; display: flex; gap: 2px; padding: 3px;
+  background: rgba(16, 36, 58, .95); border: 1px solid #304b65; border-radius: 7px;
+}
+.chart-navigation button { border: 0; background: transparent; color: #a9c1db; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 5px; }
+.chart-foot { display: flex; justify-content: space-between; gap: 12px; color: #8fa9c5; font-size: 12px; padding: 6px 14px 10px; }
+.chart-help { color: #6f879f; }
 .td-book { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; overflow: hidden; }
 .td-ticket { grid-column: 3; grid-row: 1 / span 2; padding: 16px; }
 .td-activity { grid-column: 1 / span 2; grid-row: 2; min-height: 180px; }
@@ -471,6 +510,7 @@ input[type="text"], input[type="number"], input:not([type]) {
 .price-chart .up { stroke: #7dffa8; fill: #7dffa8; }
 .price-chart .down { stroke: #ff6b7a; fill: #ff6b7a; }
 .price-chart .volume { opacity: .35; }
+.price-chart .axis-label { fill: #8ea6c0; font-size: 11px; font-family: "DM Sans", sans-serif; }
 .chart-foot, .book-foot, .ticket-note { color: #8fa9c5; font-size: 12px; margin: 8px 14px; }
 .book-columns, .book-line, .book-spread { display: grid; grid-template-columns: 1.1fr .8fr .8fr; gap: 6px; padding: 2px 12px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .book-columns { color: #8fa9c5; padding-bottom: 6px; }
