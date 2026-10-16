@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TokenIcon from "../components/TokenIcon.jsx";
-import { ArrowIcon, DotsIcon, EmpireMark, HyperliquidMark, RobinhoodMark } from "../components/Icons.jsx";
+import { AccentChevron, ArrowIcon, EmpireMark, HyperliquidMark, RobinhoodMark } from "../components/Icons.jsx";
 import { cryptoRail, equityRail, findMarket, formatPrice, markets } from "../data.js";
 
 const TABS = ["All", "Crypto", "Equities", "Metals"];
@@ -33,6 +33,12 @@ function Rail({ symbols, onOpen }) {
 
 export default function Overview({ onFund }) {
   const navigate = useNavigate();
+  const flowRef = useRef(null);
+  const tributeRef = useRef(null);
+  const videoRef = useRef(null);
+  const [flowOn, setFlowOn] = useState({ revealed: false, active: false });
+  const [tributeOn, setTributeOn] = useState({ revealed: false, active: false });
+  const [videoOn, setVideoOn] = useState(false);
   const [tab, setTab] = useState("All");
   const counts = useMemo(
     () => ({
@@ -49,6 +55,45 @@ export default function Overview({ onFund }) {
     if (tab === "Equities") return markets.filter((market) => market.category === "equities").slice(0, 5);
     return markets.filter((market) => market.category === "metals");
   }, [tab]);
+
+  useEffect(() => {
+    const node = flowRef.current;
+    if (!node) return undefined;
+    let timer;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      setFlowOn({ revealed: true, active: false });
+      timer = window.setTimeout(() => setFlowOn({ revealed: true, active: true }), 700);
+      observer.disconnect();
+    }, { threshold: 0.3 });
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const node = tributeRef.current;
+    const video = videoRef.current;
+    if (!node) return undefined;
+    let timer;
+    const onPlaying = () => setVideoOn(true);
+    video?.addEventListener("playing", onPlaying);
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      setTributeOn({ revealed: true, active: false });
+      timer = window.setTimeout(() => setTributeOn({ revealed: true, active: true }), 400);
+      video?.play().catch(() => {});
+      observer.disconnect();
+    }, { threshold: 0.25 });
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+      video?.removeEventListener("playing", onPlaying);
+    };
+  }, []);
 
   return (
     <div className="forum-page">
@@ -74,8 +119,8 @@ export default function Overview({ onFund }) {
           </p>
           <div className="hero-actions">
             <button className="mint-btn" onClick={() => navigate("/trade")}>
-              <span className="mint-icon"><DotsIcon /></span>
-              Start trading
+              <span className="am-accent" aria-hidden="true"><AccentChevron /></span>
+              <span className="am-label">Start trading</span>
             </button>
             <button className="ghost-link" onClick={onFund}>
               Fund your account <ArrowIcon />
@@ -170,14 +215,21 @@ export default function Overview({ onFund }) {
             Fund your Hyperliquid account and choose your next market.
           </p>
           <button className="mint-btn" onClick={onFund}>
-            <span className="mint-icon"><DotsIcon /></span>
-            Fund your account
+            <span className="am-accent" aria-hidden="true"><AccentChevron /></span>
+            <span className="am-label">Fund your account</span>
           </button>
         </div>
-        <div className="capital-flow" role="img" aria-label="USDG from your Robinhood Chain wallet is bridged through Empire, arrives as USDC on HyperEVM and is deposited to HyperCore.">
-          <span className="cf-network origin"><RobinhoodMark /> Robinhood Chain</span>
-          <span className="cf-network target"><HyperliquidMark /> Hyperliquid</span>
-          <div className="cf-chips">
+        <div
+          className="capital-flow"
+          ref={flowRef}
+          data-revealed={flowOn.revealed ? "" : undefined}
+          data-active={flowOn.active ? "" : undefined}
+          role="img"
+          aria-label="USDG from your Robinhood Chain wallet is bridged through Empire, arrives as USDC on HyperEVM and is deposited to HyperCore."
+        >
+          <span className="cf-network origin br-reveal" style={{ "--i": 0 }}><RobinhoodMark /> Robinhood Chain</span>
+          <span className="cf-network target br-reveal" style={{ "--i": 5 }}><HyperliquidMark /> Hyperliquid</span>
+          <div className="cf-chips br-reveal" style={{ "--i": 1 }}>
             <span className="cf-chip"><img src="/assets/tokens/USDG.png" alt="" /> USDG</span>
             <span className="cf-chip">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
@@ -187,66 +239,107 @@ export default function Overview({ onFund }) {
               Your wallet
             </span>
           </div>
-          <div className="cf-lane in" aria-hidden="true">
-            <svg viewBox="0 0 260 116" preserveAspectRatio="none">
-              <path d="M2 26C90 26 150 58 258 58" />
-              <path d="M2 90C90 90 150 58 258 58" />
+          <div className="cf-lane in br-reveal" style={{ "--i": 2 }} aria-hidden="true">
+            <svg viewBox="0 0 100 116" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="br-pulse-in" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stopColor="#ccff00" />
+                  <stop offset="1" stopColor="#97fce4" />
+                </linearGradient>
+              </defs>
+              <path className="cf-track" d="M0 26 C16 26 10 58 28 58 H100" pathLength="100" />
+              <path className="cf-track" d="M0 90 C16 90 10 58 28 58 H100" pathLength="100" />
+              <path className="cf-pulse cf-pulse-in" d="M0 26 C16 26 10 58 28 58 H100" pathLength="100" stroke="url(#br-pulse-in)" />
+              <path className="cf-pulse cf-pulse-in" d="M0 90 C16 90 10 58 28 58 H100" pathLength="100" stroke="url(#br-pulse-in)" />
             </svg>
+            <span className="br-rail br-rail-in"><span className="br-coin"><img src="/assets/tokens/USDG.png" alt="" /></span></span>
           </div>
-          <div className="cf-core" aria-hidden="true">
+          <div className="cf-core br-reveal" style={{ "--i": 3 }} aria-hidden="true">
             <span className="cf-ring" />
-            <EmpireMark size={46} />
+            <span className="cf-halo" />
+            <span className="cf-empire"><EmpireMark size={46} /></span>
           </div>
-          <div className="cf-lane out" aria-hidden="true">
-            <svg viewBox="0 0 260 116" preserveAspectRatio="none">
-              <path d="M0 58H258" />
+          <div className="cf-lane out br-reveal" style={{ "--i": 4 }} aria-hidden="true">
+            <svg viewBox="0 0 100 116" preserveAspectRatio="none">
+              <path className="cf-track" d="M0 58 H100" pathLength="100" />
+              <path className="cf-pulse cf-pulse-out" d="M0 58 H100" pathLength="100" />
             </svg>
-            <img src="/assets/tokens/USDC.svg" alt="" />
+            <span className="br-rail br-rail-out"><span className="br-coin"><img src="/assets/tokens/USDC.svg" alt="" /></span></span>
           </div>
-          <div className="cf-result">
-            <img src="/assets/tokens/USDC.svg" alt="" />
-            <strong>USDC</strong>
+          <div className="cf-result br-reveal" style={{ "--i": 5 }}>
+            <span className="cf-token"><img src="/assets/tokens/USDC.svg" alt="" /><i aria-hidden="true" /></span>
+            <strong data-text="USDC">USDC</strong>
           </div>
-          <span className="cf-destination"><HyperliquidMark /> HyperEVM <i /> HyperCore</span>
-          <span className="cf-step s1"><b>1</b> Bridge USDG</span>
-          <span className="cf-step s2"><b>2</b> Arrive on HyperEVM</span>
-          <span className="cf-step s3"><b>3</b> Deposit to HyperCore</span>
+          <span className="cf-destination br-reveal" style={{ "--i": 6 }}><HyperliquidMark /> HyperEVM <i /> HyperCore</span>
+          <span className="cf-step s1 br-step br-step-1 br-reveal" style={{ "--i": 7 }}><b>1<span aria-hidden="true">1</span></b> Bridge USDG</span>
+          <span className="cf-step s2 br-step br-step-2 br-reveal" style={{ "--i": 8 }}><b>2<span aria-hidden="true">2</span></b> Arrive on HyperEVM</span>
+          <span className="cf-step s3 br-step br-step-3 br-reveal" style={{ "--i": 9 }}><b>3<span aria-hidden="true">3</span></b> Deposit to HyperCore</span>
         </div>
       </section>
 
-      <section className="tribute-section">
-        <img className="section-bg coins" src="/assets/tributecoins-poster.jpg" alt="" />
-        <div className="section-copy">
-          <p className="eyebrow">Earn Tribute</p>
+      <section className="forum-tribute" ref={tributeRef}>
+        <img className="tribute-backdrop" alt="" src="/assets/tributecoins-poster.jpg" />
+        <video
+          className={`tribute-backdrop tribute-video${videoOn ? " is-playing" : ""}`}
+          ref={videoRef}
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          poster="/assets/tributecoins-poster.jpg"
+          aria-hidden="true"
+        >
+          <source src="/assets/tributecoins-1080.mp4" type="video/mp4" media="(max-width: 900px)" />
+          <source src="/assets/tributecoins-1440.mp4" type="video/mp4" />
+        </video>
+        <div className="tribute-shade" aria-hidden="true" />
+        <div className="forum-tribute-copy">
+          <span className="civic-label">Earn Tribute</span>
           <h2>
             A little silver.
             <br />
             A higher standard.
           </h2>
-          <p className="lede">
+          <p>
             Earn Silver on eligible Empire positions.
             <br />
             Hold 1,000,000 $EMPIREX to earn Gold at twice the daily rate.
           </p>
-        </div>
-        <div className="tribute-card">
-          <div className="metal-row">
-            <img src="/assets/empire-coin-au.png" alt="Gold" />
-            <div>
-              <strong>Gold</strong>
-              <span>0.5% daily</span>
+          <div className="tribute-card" data-revealed={tributeOn.revealed ? "" : undefined} data-active={tributeOn.active ? "" : undefined}>
+            <div className="tc-metals" style={{ "--i": 0 }}>
+              <span className="tc-metal tc-au"><img src="/assets/empire-coin-au.png" alt="" /><strong>Gold</strong></span>
+              <span className="tc-metal tc-ag"><img src="/assets/empire-coin-ag.png" alt="" /><strong>Silver</strong></span>
             </div>
-            <img src="/assets/empire-coin-ag.png" alt="Silver" />
-            <div>
-              <strong>Silver</strong>
-              <span>0.25% daily</span>
+            <div className="tc-formula" style={{ "--i": 1 }} aria-label="Rewards accrue as entry value times time open times reward rate">
+              <span className="tc-factor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 18V6" /></svg>
+                Entry value
+              </span>
+              <i aria-hidden="true">×</i>
+              <span className="tc-factor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4.5 0" /></svg>
+                Time open
+              </span>
+              <i aria-hidden="true">×</i>
+              <span className="tc-factor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M19 5 5 19" /><circle cx="6.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></svg>
+                Reward rate
+              </span>
             </div>
+            <div className="tc-accrual" style={{ "--i": 2 }}>
+              <div className="tc-track" aria-hidden="true">
+                <span className="tc-run tc-run-au"><span className="tc-fill" /><span className="tc-rail"><span className="tc-coin"><img src="/assets/empire-coin-au.png" alt="" /></span></span></span>
+                <span className="tc-run tc-run-ag"><span className="tc-fill" /><span className="tc-rail"><span className="tc-coin"><img src="/assets/empire-coin-ag.png" alt="" /></span></span></span>
+                <span className="tc-wallet">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></svg>
+                </span>
+              </div>
+            </div>
+            <button className="mint-btn wide tc-cta" style={{ "--i": 3 }} type="button" onClick={() => navigate("/tribute")}>
+              <span className="am-accent" aria-hidden="true"><AccentChevron /></span>
+              <span className="am-label">Discover Tribute</span>
+            </button>
           </div>
-          <p className="formula">Entry value <i>×</i> Time open <i>×</i> Reward rate</p>
-          <button className="mint-btn wide" onClick={() => navigate("/tribute")}>
-            <span className="mint-icon"><DotsIcon /></span>
-            Discover Tribute
-          </button>
         </div>
       </section>
     </div>

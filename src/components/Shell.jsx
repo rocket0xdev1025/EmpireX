@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { ArrowIcon, EmpireMark, HyperliquidMark, RobinhoodMark } from "./Icons.jsx";
+import { AccentChevron, ArrowIcon, EmpireMark, HyperliquidMark, RobinhoodMark } from "./Icons.jsx";
 import DepositDialog from "./DepositDialog.jsx";
 import WalletModal from "./WalletModal.jsx";
 
@@ -20,20 +20,7 @@ function WalletButton({ account, onConnect }) {
   return (
     <button className="wallet-btn" type="button" aria-label={account.wallet ? shortAddress(account.wallet) : "Connect wallet"} onClick={() => (account.wallet ? account.disconnect() : onConnect())}>
       <span className="am-accent" aria-hidden="true">
-        <svg width="14" height="16" viewBox="0 0 14 16">
-          <g fill="#03211c">
-            <circle cx="2" cy="2" r="1" />
-            <circle cx="5" cy="5" r="1" />
-            <circle cx="8" cy="8" r="1" />
-            <circle cx="5" cy="11" r="1" />
-            <circle cx="2" cy="14" r="1" />
-            <circle cx="6" cy="2" r="1" />
-            <circle cx="9" cy="5" r="1" />
-            <circle cx="12" cy="8" r="1" />
-            <circle cx="9" cy="11" r="1" />
-            <circle cx="6" cy="14" r="1" />
-          </g>
-        </svg>
+        <AccentChevron />
       </span>
       <span className="am-label">{account.wallet ? shortAddress(account.wallet) : "Connect wallet"}</span>
     </button>

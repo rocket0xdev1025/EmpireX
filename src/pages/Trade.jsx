@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TokenIcon from "../components/TokenIcon.jsx";
 import TradingChart from "../components/TradingChart.jsx";
-import { DotsIcon, HyperliquidMark } from "../components/Icons.jsx";
+import { AccentChevron, HyperliquidMark } from "../components/Icons.jsx";
 import { findMarket, formatCompact, formatPrice, markets } from "../data.js";
 
 const SLIPPAGES = ["0.10%", "0.25%", "0.50%", "1.00%"];
@@ -233,9 +233,9 @@ export default function Trade({ account, onFund }) {
             </select>
           </label>
           {account.wallet ? (
-            <button className="mint-btn wide" type="submit"><span className="mint-icon"><DotsIcon /></span>Submit order</button>
+            <button className="mint-btn wide" type="submit"><span className="am-accent" aria-hidden="true"><AccentChevron /></span><span className="am-label">Submit order</span></button>
           ) : (
-            <button className="mint-btn wide" type="button" onClick={account.openConnect}><span className="mint-icon"><DotsIcon /></span>Connect wallet</button>
+            <button className="mint-btn wide" type="button" onClick={account.openConnect}><span className="am-accent" aria-hidden="true"><AccentChevron /></span><span className="am-label">Connect wallet</span></button>
           )}
           <button className="text-btn" type="button" onClick={onFund}>Deposit funds</button>
           <p className="ticket-note">Hyperliquid perps / USDC collateral</p>

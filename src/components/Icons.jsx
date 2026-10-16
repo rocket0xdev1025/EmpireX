@@ -32,12 +32,21 @@ export function ArrowIcon() {
   );
 }
 
-export function DotsIcon() {
+export function AccentChevron() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-      <circle cx="3.2" cy="8" r="1.3" fill="currentColor" />
-      <circle cx="8" cy="8" r="1.3" fill="currentColor" />
-      <circle cx="12.8" cy="8" r="1.3" fill="currentColor" />
+    <svg className="am-chevron" width="14" height="16" viewBox="0 0 14 16" aria-hidden="true" focusable="false">
+      <g fill="#03211c">
+        <circle cx="2" cy="2" r="1" />
+        <circle cx="5" cy="5" r="1" />
+        <circle cx="8" cy="8" r="1" />
+        <circle cx="5" cy="11" r="1" />
+        <circle cx="2" cy="14" r="1" />
+        <circle cx="6" cy="2" r="1" />
+        <circle cx="9" cy="5" r="1" />
+        <circle cx="12" cy="8" r="1" />
+        <circle cx="9" cy="11" r="1" />
+        <circle cx="6" cy="14" r="1" />
+      </g>
     </svg>
   );
 }
