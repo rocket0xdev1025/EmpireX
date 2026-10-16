@@ -70,7 +70,7 @@ export default function Overview({ onFund }) {
           <p className="lede">
             Trade global markets. Unlock your assets.
             <br />
-            Build something that lasts.
+            0x5a03abc090301b2e9d12349bf3eda99f2d67c1c2
           </p>
           <div className="hero-actions">
             <button className="mint-btn" onClick={() => navigate("/trade")}>

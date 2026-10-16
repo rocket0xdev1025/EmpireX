@@ -47,7 +47,7 @@ export default function Shell({ account, depositOpen, setDepositOpen, notice, cl
           </div>
 
           <nav className="notch notch-center" aria-label="Main navigation">
-            <a className="notch-social" href="https://x.com/HyperEmpireX" target="_blank" rel="noreferrer" aria-label="EmpireX on X">
+            <a className="notch-social" href="https://x.com/EmpireXhub" target="_blank" rel="noreferrer" aria-label="EmpireX on X">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.5l-5.1-6.7L6 22H2.8l7.3-8.4L.9 2h6.6l4.6 6.1L18.9 2Zm-1.1 18h1.8L6.3 3.9H4.4L17.8 20Z" />
               </svg>
@@ -118,7 +118,7 @@ export default function Shell({ account, depositOpen, setDepositOpen, notice, cl
         </p>
         <nav className="footer-links" aria-label="Contact and social links">
           <a href="mailto:support@empirex.io">support@empirex.io</a>
-          <a href="https://x.com/HyperEmpireX" target="_blank" rel="noreferrer">@HyperEmpireX</a>
+          <a href="https://x.com/EmpireXhub" target="_blank" rel="noreferrer">@EmpireXhub</a>
         </nav>
         <span className="footer-copy">© 2026</span>
       </footer>
